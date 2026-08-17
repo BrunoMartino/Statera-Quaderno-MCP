@@ -32,7 +32,7 @@ Models:
 - Contain simple domain behavior when natural.
 - Avoid external API calls.
 - Avoid large workflow orchestration.
-- Here: request/response structs for posts, pages, media, product content. Only allowlisted fields. No DB models.
+- Here: request/response structs for posts, pages, media, product content, coupons, and order/payment/shipment list projections. Only allowlisted fields. No DB models.
 
 Services:
 
@@ -45,7 +45,7 @@ Views / Presenters / Serializers:
 - Format output.
 - Avoid persistence and business decisions.
 - Avoid hidden data fetching when possible.
-- Sanitize adapter responses before they become tool results (strip price, stock, SKU, `meta_data`, emails, detailed author).
+- Sanitize adapter responses before they become tool results (strip price, stock, SKU, `meta_data`, emails, detailed author). Order/payment/shipment lists also strip email, phone, and full address.
 
 Repositories / DAOs:
 
@@ -59,11 +59,11 @@ Use Design Patterns only when they clarify intent.
 
 Acceptable examples:
 
-- `PaymentStrategy` — not used (payments are out of scope).
+- `PaymentStrategy` — not used (payment **writes** are out of scope; `list_payments` is a GET projection).
 - `NotificationAdapter` — not used.
 - `InvoiceFactory` — not used.
 - `AccessPolicy` — `internal/guard` (routes, methods, fields).
-- `CreateOrderCommand` — not used (orders are out of scope).
+- `CreateOrderCommand` — not used (order **writes** are out of scope; `list_orders` is GET-only).
 - `WordPressAdapter` / `WooCommerceAdapter` — HTTP clients.
 - `AuthStrategy` — Application Password vs WC consumer key.
 
@@ -99,7 +99,7 @@ MCP SDK types may use the SDK's own `Handler` names at the `internal/mcp` bounda
 - Fixed codes (do not paraphrase for the model to invent a workaround):
   - `FIELD_FORBIDDEN` — commercial, account, or non-allowlisted field in a write body. Fail the tool; do not strip and continue.
   - `ROUTE_FORBIDDEN` — path outside `my_docs/mcpContext.md` §5.
-  - `METHOD_FORBIDDEN` — DELETE except coupon, PUT on product, POST to create product.
+  - `METHOD_FORBIDDEN` — DELETE except coupon; PUT on product; POST to create product; POST/PUT/PATCH/DELETE on orders, payments, or shipments.
   - `DISCOUNT_CONFIRMATION_REQUIRED` — coupon percent > 20 without human AskQuestion confirmation.
   - `AUTH_MISSING` — env incomplete or absent at boot or tool time.
 - Never log `WP_APP_PASSWORD`, `WC_CONSUMER_SECRET`, Authorization headers, or `.env` contents.

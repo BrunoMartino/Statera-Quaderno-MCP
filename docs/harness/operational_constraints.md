@@ -53,7 +53,7 @@ Adapters:
 
 - Data retention: this process stores nothing. Retention is the WordPress site.
 - Data residency: the store host (`WP_BASE_URL`).
-- PII handling: do not return emails or detailed author. Do not log credentials or Authorization headers.
+- PII handling: do not return emails or detailed author. Order/payment/shipment lists must not return email, phone, or full address. Do not log credentials or Authorization headers.
 - Encryption requirements: HTTPS to `WP_BASE_URL` only. Application Password / WC secret in env, not in git.
 - Backup requirements: N/A for this binary. Store backups are the shop’s.
 - Restore expectations: N/A. Redeploy binary + env.
@@ -93,6 +93,17 @@ Service:
 - Fallback: none
 - Owner: the shop that owns `WP_BASE_URL`
 
+Service:
+
+- Name: WooCommerce REST orders (`/wp-json/wc/v3/orders`, optional `/wp-json/wc/v3/refunds`)
+- Purpose: GET-only list projections for orders, payments, and shipments (`feature-woocommerce-orders-payments-shipments-read`)
+- Rate limits: TBD: per-store host
+- Timeout: 10s
+- Retry policy: GET ≤ 1 retry; POST/PUT/PATCH/DELETE never issued
+- Failure mode: tool error; write methods → `METHOD_FORBIDDEN`
+- Fallback: none
+- Owner: the shop that owns `WP_BASE_URL`
+
 Auth priority: if `WP_APP_PASSWORD` is set, Basic `WP_APP_USER:WP_APP_PASSWORD`. Else Basic `WC_CONSUMER_KEY:WC_CONSUMER_SECRET`. Never put consumer credentials in the URL.
 
 ## Security Constraints
@@ -116,4 +127,4 @@ Auth priority: if `WP_APP_PASSWORD` is set, Basic `WP_APP_USER:WP_APP_PASSWORD`.
 - Agents must not assume production access. Prefer staging `WP_ENVIRONMENT` for bulk edits.
 - Agents must stop before irreversible actions unless approved (DELETE só cupom; publish only with human confirmation).
 - MCP outputs must be treated as observations, not guaranteed truth.
-- If a human asks to change product price, stock, order, customer, admin, plugin, or setting: refuse. Cupons/promoções usam as tools de cupom; percentagem > 20 exige AskQuestion.
+- If a human asks to **change** product price, stock, order, customer, admin, plugin, or setting: refuse. Listing orders/payments/shipments uses GET tools when allowlisted. Cupons/promoções usam as tools de cupom; percentagem > 20 exige AskQuestion.

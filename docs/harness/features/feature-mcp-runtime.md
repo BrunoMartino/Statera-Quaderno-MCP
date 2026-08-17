@@ -8,13 +8,13 @@
 
 ### Descrição
 
-Servidor MCP **reutilizável** para qualquer loja WordPress + WooCommerce. Agentes (Cursor, Claude, etc.) editam conteúdo: páginas, posts, textos/imagens de produtos, e cupons/promoções (`/wc/v3/coupons`).
+Servidor MCP **reutilizável** para qualquer loja WordPress + WooCommerce. Agentes (Cursor, Claude, etc.) editam conteúdo: páginas, posts, textos/imagens de produtos, e cupons/promoções (`/wc/v3/coupons`). Também listam pedidos, pagamentos e envios só via GET (`list_orders`, `list_payments`, `list_shipments`).
 
 Mesmo binário MCP: carrega env da loja/ambiente, allowlist de tools + strip de campos proibidos, HTTPS para `WP_BASE_URL`.
 
 Só estas tools existem. Não há `wp_request`, `fetch`, `sql`, `wp_cli`, `eval`.
 
-Instruções do servidor e description de cada tool: páginas, posts, conteúdo de produto e cupons; recusar preço/stock de produto e contas; percentagem de cupom > 20 exige AskQuestion; não inventar tools; não pedir passwords no chat; default de criação de post/página `draft`.
+Instruções do servidor e description de cada tool: páginas, posts, conteúdo de produto e cupons; listagens GET de pedidos/pagamentos/envios; recusar preço/stock de produto, contas, e **escrita** de encomenda; percentagem de cupom > 20 exige AskQuestion; não inventar tools; não pedir passwords no chat; default de criação de post/página `draft`.
 
 Transporte: stdio (Cursor) e Streamable HTTP (Coolify), SDK oficial `modelcontextprotocol/go-sdk`.
 
@@ -49,14 +49,15 @@ Trade-off: não é proxy genérico da WP/WC REST; tools em falta ficam em falta.
 - Tool ou path fora da tabela → não existe / `ROUTE_FORBIDDEN`
 - DELETE de post/produto ou POST de produto → `METHOD_FORBIDDEN`
 - Env incompleto → `AUTH_MISSING`
-- Humano pede preço/stock de produto, encomenda, cliente, plugin, setting → recusar. Cupons: tools de cupom; percent > 20 → AskQuestion
+- Humano pede **alterar** preço/stock de produto, encomenda, cliente, plugin, setting → recusar. Listar encomendas/pagamentos/envios: tools GET. Cupons: tools de cupom; percent > 20 → AskQuestion
+- POST/PUT/PATCH/DELETE em orders → `METHOD_FORBIDDEN`
 
 ### Critério de aceite (o que prova que está pronto)
 
-- [ ] Teste: o servidor expõe exactamente as tools §7 (list/get/upsert posts e pages; list/get/update product content; upload_media; list/create/update/delete coupons)
+- [ ] Teste: o servidor expõe exactamente as tools §7 (list/get/upsert posts e pages; list/get/update product content; upload_media; list/create/update/delete coupons; list_orders, list_payments, list_shipments)
 - [ ] Teste: não existe tool de HTTP genérico
 - [ ] Teste: stdio sobe com o mesmo binário que Streamable HTTP
-- [ ] Teste: instructions/descriptions incluem recusa de preço/stock de produto e contas; cupom >20% AskQuestion; default `draft` em post/página
+- [ ] Teste: instructions/descriptions incluem recusa de preço/stock de produto, contas, e escrita de encomenda; cupom >20% AskQuestion; default `draft` em post/página
 - [ ] Teste: códigos de erro fixos nas falhas de allowlist/auth/confirmação
 
 ### Exemplo / contexto
@@ -71,7 +72,7 @@ Agente (Cursor / Claude)
         → HTTPS para WP_BASE_URL
 ```
 
-Tools: `list_posts`, `get_post`, `upsert_post`, `list_pages`, `get_page`, `upsert_page`, `list_products`, `get_product_content`, `update_product_content`, `upload_media`, `list_coupons`, `create_coupon`, `update_coupon`, `delete_coupon`.
+Tools: `list_posts`, `get_post`, `upsert_post`, `list_pages`, `get_page`, `upsert_page`, `list_products`, `get_product_content`, `update_product_content`, `upload_media`, `list_coupons`, `create_coupon`, `update_coupon`, `delete_coupon`, `list_orders`, `list_payments`, `list_shipments`.
 
 ### Design Patterns (Gang of Four) Sugerido
 

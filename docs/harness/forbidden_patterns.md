@@ -56,6 +56,7 @@ Also forbidden for this product:
 - Mixing tenant/customer data without explicit scoping.
 - Writing price, sale dates, stock, SKU, tax, shipping, downloads, `meta_data`, or other §6.2 forbidden keys.
 - Creating products via MCP (POST `/wc/v3/products`).
+- Adding POST, PUT, PATCH, or DELETE for orders, payments, shipping, customers, or settings. GET of those sections is allowed only when a feature harness allowlists the GET paths after an explicit human request.
 - DELETE of any resource except `DELETE /wc/v3/coupons/{id}` (unpublish post/page = `status: draft` via PATCH).
 - Writing product variations (`/wc/v3/products/{id}/variations`) in v1.
 - Batch endpoints (`/batch`).

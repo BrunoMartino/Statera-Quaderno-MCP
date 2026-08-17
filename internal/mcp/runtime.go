@@ -131,6 +131,10 @@ type couponInput struct {
 
 type emptyInput struct{}
 
+type listOrdersInput struct {
+	Status string `json:"status,omitempty"`
+}
+
 // flexString accepts JSON string or number (LLMs often send coupon amount as a number).
 type flexString string
 

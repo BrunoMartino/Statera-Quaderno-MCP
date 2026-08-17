@@ -23,6 +23,7 @@ One instance = one `.env` = one store (`WP_BASE_URL`). The same binary serves an
 | Products (copy/images) | `list_products`, `get_product_content`, `update_product_content` |
 | Media | `upload_media` |
 | Coupons / promotions | `list_coupons`, `create_coupon`, `update_coupon`, `delete_coupon` |
+| Orders / payments / shipments (GET only) | `list_orders`, `list_payments`, `list_shipments` |
 
 Promotion = coupon (`/wc/v3/coupons`), not product `sale_price`. Create/update with **percent > 20** requires human confirmation (`human_confirmed` / AskQuestion). DELETE is coupons only; unpublish a post/page with `status: draft`.
 
@@ -31,8 +32,8 @@ Auth: **one** mode for both WP REST and WC REST. Default: Application Password. 
 ## What it does not do
 
 - Product price (`regular_price`, `sale_price`, stock, SKU)
-- Orders, customers, payments, shipping
-- Users, settings, plugins, themes
+- Writing orders, payments, or shipments (POST/PUT/PATCH/DELETE)
+- Customers, users, settings, plugins, themes
 - Native Woo MCP, Store API / checkout, LiveCanvas
 - DELETE of posts, pages, products, or media
 - Creating a new product
@@ -47,7 +48,7 @@ Store-side PHP (theme filters) is defense **on the site**, in another repo. This
 - Store on **HTTPS**
 - Dedicated WordPress user (e.g. `mcp-content`), not an administrator
 
-Minimum capabilities: `read`, `edit_posts`, `edit_pages`, `publish_posts`, `publish_pages`, `upload_files`, `edit_products`, plus coupon caps (`edit_shop_coupons`, `publish_shop_coupons`, `delete_shop_coupons`). Avoid `manage_options` / `manage_woocommerce` when the shop allows it.
+Minimum capabilities: `read`, `edit_posts`, `edit_pages`, `publish_posts`, `publish_pages`, `upload_files`, `edit_products`, coupon caps (`edit_shop_coupons`, `publish_shop_coupons`, `delete_shop_coupons`), and order read (`read_shop_orders`). Avoid `manage_options` / `manage_woocommerce` when the shop allows it.
 
 ## Install
 

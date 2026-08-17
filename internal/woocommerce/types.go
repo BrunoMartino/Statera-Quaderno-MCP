@@ -65,3 +65,36 @@ type CouponWrite struct {
 	ProductIDs        []int         `json:"product_ids,omitempty"`
 	ProductCategories []int         `json:"product_categories,omitempty"`
 }
+
+type OrderRefund struct {
+	ID     int    `json:"id,omitempty"`
+	Total  string `json:"total,omitempty"`
+	Reason string `json:"reason,omitempty"`
+}
+
+type OrderListItem struct {
+	ID              int           `json:"id"`
+	Number          string        `json:"number,omitempty"`
+	Status          string        `json:"status,omitempty"`
+	Currency        string        `json:"currency,omitempty"`
+	Total           string        `json:"total,omitempty"`
+	DatePaid        *string       `json:"date_paid"`
+	RefundRequested bool          `json:"refund_requested"`
+	Refunds         []OrderRefund `json:"refunds"`
+}
+
+type PaymentListItem struct {
+	OrderID            int     `json:"order_id"`
+	PaymentMethod      string  `json:"payment_method,omitempty"`
+	PaymentMethodTitle string  `json:"payment_method_title,omitempty"`
+	TransactionID      string  `json:"transaction_id"`
+	DatePaid           *string `json:"date_paid"`
+	Confirmed          bool    `json:"confirmed"`
+}
+
+type ShipmentListItem struct {
+	OrderID          int     `json:"order_id"`
+	FulfillmentState string  `json:"fulfillment_state"`
+	TrackingCode     *string `json:"tracking_code"`
+	DateCompleted    *string `json:"date_completed"`
+}

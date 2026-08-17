@@ -23,6 +23,7 @@ Uma instância = um `.env` = uma loja (`WP_BASE_URL`). O mesmo código serve out
 | Produtos (texto/imagem) | `list_products`, `get_product_content`, `update_product_content` |
 | Media | `upload_media` |
 | Cupons / promoções | `list_coupons`, `create_coupon`, `update_coupon`, `delete_coupon` |
+| Pedidos / pagamentos / envios (só GET) | `list_orders`, `list_payments`, `list_shipments` |
 
 Promoção = cupom (`/wc/v3/coupons`), não `sale_price` no produto. Create/update de cupom com **percentagem > 20** exige confirmação humana (`human_confirmed` / AskQuestion). DELETE só de cupom; unpublish de post/página = `status: draft`.
 
@@ -31,8 +32,8 @@ Auth: **um** modo para WP REST e WC REST. Default: Application Password. Alterna
 ## O que não opera
 
 - Preço de produto (`regular_price`, `sale_price`, stock, SKU)
-- Encomendas, clientes, pagamentos, envios
-- Users, settings, plugins, temas
+- Escrever encomendas, pagamentos ou envios (POST/PUT/PATCH/DELETE)
+- Clientes, users, settings, plugins, temas
 - MCP nativo Woo, Store API / checkout, LiveCanvas
 - DELETE de posts, páginas, produtos ou media
 - Criar produto novo
@@ -47,7 +48,7 @@ PHP da loja (filtros no tema) é defesa **no site**, noutro repositório. Este M
 - Loja em **HTTPS**
 - User WordPress dedicado (ex. `mcp-content`), não admin
 
-Capabilities mínimas: `read`, `edit_posts`, `edit_pages`, `publish_posts`, `publish_pages`, `upload_files`, `edit_products`, e cupons (`edit_shop_coupons`, `publish_shop_coupons`, `delete_shop_coupons`). Sem `manage_options` / `manage_woocommerce` se a loja o permitir.
+Capabilities mínimas: `read`, `edit_posts`, `edit_pages`, `publish_posts`, `publish_pages`, `upload_files`, `edit_products`, cupons (`edit_shop_coupons`, `publish_shop_coupons`, `delete_shop_coupons`), e leitura de encomendas (`read_shop_orders`). Sem `manage_options` / `manage_woocommerce` se a loja o permitir.
 
 ## Instalar
 

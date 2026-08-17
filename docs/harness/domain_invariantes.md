@@ -138,10 +138,12 @@ Failure impact:
 Description:
 
 - Outbound HTTP is only the paths and methods in `my_docs/mcpContext.md` §5. Anything else is `ROUTE_FORBIDDEN` or `METHOD_FORBIDDEN` with no retry. No generic WP/WC proxy. No `/woocommerce/mcp`.
+- GET of a previously forbidden section (orders, payments, shipments, and similar) is allowed **only** when a feature harness allowlists those GET paths after an explicit human request. Without that feature, the path stays `ROUTE_FORBIDDEN`.
+- POST, PUT, PATCH, and DELETE must not be added for those sections. If the path is allowlisted for GET only, other methods are `METHOD_FORBIDDEN`. DELETE remains coupon-only (INV-006).
 
 Business reason:
 
-- Open REST would expose users, orders, settings, and checkout.
+- Never write orders, payments, shipping, users, settings, or checkout. Read of a previously forbidden section happens only with an explicit allowlist, not an open REST proxy.
 
 Must always be true when:
 
@@ -163,11 +165,11 @@ Enforced by:
 - Database constraint: no
 - Transaction: no
 - Policy / Guard: path/method allowlist
-- Test coverage: yes (users GET never sent; DELETE except coupons forbidden)
+- Test coverage: yes (users GET never sent; POST/PUT/PATCH/DELETE orders forbidden; GET `/wc/v3/orders` allowed when the feature is present; DELETE except coupons forbidden)
 
 Failure impact:
 
-- Agent reaches accounts, orders, or settings.
+- Agent writes accounts, orders, or settings, or reads a forbidden section without a requested feature.
 
 ### INV-005: Forbidden keys fail the tool
 
@@ -282,14 +284,15 @@ Failure impact:
 Description:
 
 - Tool results may include editorial fields. Product responses must not include prices, stock, SKU, `meta_data`, emails, or detailed author. Coupon tools **may** return `code`, `discount_type`, `amount`, validade e âmbito (carrinho/produto).
+- Order/payment/shipment list tools (`feature-woocommerce-orders-payments-shipments-read`) **may** return allowlisted status, payment method, confirmation (`date_paid`), refunds, and tracking. They must not return email, phone, or full billing/shipping address. Free-form `meta_data` is stripped except allowlisted tracking keys.
 
 Business reason:
 
-- The model should not see or rewrite product money, inventory, or personal data. Cupom precisa do valor do desconto para a feature funcionar.
+- The model should not see or rewrite product money, inventory, or personal data. Cupom precisa do valor do desconto para a feature funcionar. Listagens de encomenda precisam de status/pagamento/rastreio/reembolso sem PII de contacto.
 
 Must always be true when:
 
-- Every tool response, especially `get_product_content` / `list_products`. Coupon list/get/create/update responses include coupon fields only.
+- Every tool response, especially `get_product_content` / `list_products`. Coupon list/get/create/update responses include coupon fields only. `list_orders` / `list_payments` / `list_shipments` include only their allowlisted fields.
 
 Applies to:
 

@@ -34,6 +34,9 @@ func (r *Runtime) registerTools() {
 	mcp.AddTool(r.server, &mcp.Tool{Name: "create_coupon", Description: "Cria cupom (code, discount_type percent|fixed_cart|fixed_product, amount, date_expires, product_ids, product_categories). Percentagem > 20 exige AskQuestion e human_confirmed=true. Não usa sale_price em produto.", InputSchema: couponInputSchema()}, r.createCoupon)
 	mcp.AddTool(r.server, &mcp.Tool{Name: "update_coupon", Description: "PATCH cupom. Percentagem > 20 exige AskQuestion e human_confirmed=true.", InputSchema: couponInputSchema()}, r.updateCoupon)
 	mcp.AddTool(r.server, &mcp.Tool{Name: "delete_coupon", Description: "DELETE /wc/v3/coupons/{id}. Não apaga posts, páginas, produtos nem media.", InputSchema: inputSchema[idInput]()}, r.deleteCoupon)
+	mcp.AddTool(r.server, &mcp.Tool{Name: "list_orders", Description: "Lista pedidos (id, number, status, total, date_paid, refunds). Filtro status. Não devolve email, telefone nem morada. Só GET.", InputSchema: inputSchema[listOrdersInput]()}, r.listOrders)
+	mcp.AddTool(r.server, &mcp.Tool{Name: "list_payments", Description: "Lista pagamentos projectados do pedido (método, transaction_id, date_paid, confirmed). Só GET. Não devolve PII de contacto.", InputSchema: inputSchema[emptyInput]()}, r.listPayments)
+	mcp.AddTool(r.server, &mcp.Tool{Name: "list_shipments", Description: "Lista envios projectados do pedido (rastreio allowlisted, aguardando vs enviado). Só GET. Não inventa código de rastreio.", InputSchema: inputSchema[emptyInput]()}, r.listShipments)
 }
 
 func (r *Runtime) listPosts(ctx context.Context, req *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, any, error) {
@@ -153,6 +156,30 @@ func (r *Runtime) deleteCoupon(ctx context.Context, req *mcp.CallToolRequest, in
 	}
 	r.logTool("delete_coupon", in.ID)
 	return pack(r.wc.DeleteCoupon(ctx, in.ID))
+}
+
+func (r *Runtime) listOrders(ctx context.Context, req *mcp.CallToolRequest, in listOrdersInput) (*mcp.CallToolResult, any, error) {
+	if err := r.assertKeys(guard.ResourceOrderList, req.Params.Arguments); err != nil {
+		return nil, nil, err
+	}
+	r.logTool("list_orders", 0)
+	return packList(r.wc.ListOrders(ctx, in.Status))
+}
+
+func (r *Runtime) listPayments(ctx context.Context, req *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, any, error) {
+	if err := r.assertKeys(guard.ResourceList, req.Params.Arguments); err != nil {
+		return nil, nil, err
+	}
+	r.logTool("list_payments", 0)
+	return packList(r.wc.ListPayments(ctx))
+}
+
+func (r *Runtime) listShipments(ctx context.Context, req *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, any, error) {
+	if err := r.assertKeys(guard.ResourceList, req.Params.Arguments); err != nil {
+		return nil, nil, err
+	}
+	r.logTool("list_shipments", 0)
+	return packList(r.wc.ListShipments(ctx))
 }
 
 func pack[T any](v T, err error) (*mcp.CallToolResult, any, error) {

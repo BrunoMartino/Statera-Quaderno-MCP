@@ -33,7 +33,7 @@ Service tests:
 - Verify business workflows.
 - Cover branching rules, failure modes, and side effects.
 - Prefer these for non-trivial business logic.
-- Upsert post/page with allowlisted fields; update product content; coupon create/list/update/delete; refuse create-product and DELETE except coupon.
+- Upsert post/page with allowlisted fields; update product content; coupon create/list/update/delete; list orders/payments/shipments via GET; refuse create-product, refuse POST/PUT/PATCH/DELETE orders, and DELETE except coupon.
 
 Policy / Guard tests:
 
@@ -45,6 +45,8 @@ Policy / Guard tests:
 - DELETE coupon → allowed (`/wc/v3/coupons/{id}`).
 - `create_coupon` / `update_coupon` with percent > 20 and no confirmation → `DISCOUNT_CONFIRMATION_REQUIRED`; no HTTP.
 - Product GET/PATCH response sanitization: no price, stock, SKU, `meta_data`.
+- GET `/wc/v3/orders` allowed; POST/PUT/PATCH/DELETE `/wc/v3/orders` → `METHOD_FORBIDDEN`.
+- `list_orders` / `list_payments` / `list_shipments` sanitization: no email, phone, or full address.
 
 Adapter tests:
 
@@ -96,7 +98,9 @@ Required invariant cases (context checklist):
 - PATCH product with `regular_price` → tool error, fake store never receives that field.
 - PATCH product `description` only → adapter called, sanitized result returned.
 - Guard never issues GET `/wp/v2/users`.
+- GET `/wc/v3/orders` is allowed; POST/PUT/PATCH/DELETE orders is `METHOD_FORBIDDEN`.
 - DELETE post/product is `METHOD_FORBIDDEN`; DELETE coupon is allowed.
+- Order list responses omit email, phone, and full address.
 - Percent coupon > 20 without confirmation → `DISCOUNT_CONFIRMATION_REQUIRED`.
 
 ## Agent Rules

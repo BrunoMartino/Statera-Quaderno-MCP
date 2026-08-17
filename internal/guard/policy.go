@@ -11,13 +11,14 @@ import (
 type Resource string
 
 const (
-	ResourcePost    Resource = "post"
-	ResourcePage    Resource = "page"
-	ResourceProduct Resource = "product"
-	ResourceCoupon  Resource = "coupon"
-	ResourceMedia   Resource = "media"
-	ResourceGet     Resource = "get"
-	ResourceList    Resource = "list"
+	ResourcePost      Resource = "post"
+	ResourcePage      Resource = "page"
+	ResourceProduct   Resource = "product"
+	ResourceCoupon    Resource = "coupon"
+	ResourceMedia     Resource = "media"
+	ResourceGet       Resource = "get"
+	ResourceList      Resource = "list"
+	ResourceOrderList Resource = "order_list"
 )
 
 // AccessPolicy is the deny-by-default Policy for routes, methods, and write keys.
@@ -49,6 +50,9 @@ func (p *AccessPolicy) rules() []routeRule {
 		{path: regexp.MustCompile(`^/wp-json/wc/v3/coupons/[0-9]+$`), methods: methodSet("GET", "PATCH", "DELETE")},
 		{path: regexp.MustCompile(`^/wp-json/wp/v2/media$`), methods: methodSet("GET", "POST")},
 		{path: regexp.MustCompile(`^/wp-json/wp/v2/media/[0-9]+$`), methods: methodSet("GET")},
+		{path: regexp.MustCompile(`^/wp-json/wc/v3/orders$`), methods: methodSet("GET")},
+		{path: regexp.MustCompile(`^/wp-json/wc/v3/orders/[0-9]+$`), methods: methodSet("GET")},
+		{path: regexp.MustCompile(`^/wp-json/wc/v3/refunds$`), methods: methodSet("GET")},
 	}
 }
 
@@ -76,6 +80,8 @@ func (p *AccessPolicy) allowedKeys(resource Resource) map[string]struct{} {
 		return setOf("id")
 	case ResourceList:
 		return map[string]struct{}{}
+	case ResourceOrderList:
+		return setOf("status")
 	default:
 		return map[string]struct{}{}
 	}
@@ -164,6 +170,18 @@ func (p *AccessPolicy) AssertCatalogVisibility(v string) error {
 	}
 	switch v {
 	case "visible", "search", "hidden":
+		return nil
+	default:
+		return NewError(FieldForbidden)
+	}
+}
+
+func (p *AccessPolicy) AssertOrderStatus(v string) error {
+	if v == "" {
+		return nil
+	}
+	switch v {
+	case "pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed", "any":
 		return nil
 	default:
 		return NewError(FieldForbidden)

@@ -9,9 +9,9 @@ Define the architectural style, module boundaries, allowed abstractions, and age
 This project is a Go MCP server. MVC section names below map to that runtime (not a web UI):
 
 - Model: typed structs next to each client (`internal/wordpress`, `internal/woocommerce`). No `map[string]any` as the API model. No persistence in this process.
-- View: MCP tool results (sanitized JSON). Product payloads never include price, stock, SKU, `meta_data`, emails, or detailed author. Coupon tools may return coupon amount/type/dates.
+- View: MCP tool results (sanitized JSON). Product payloads never include price, stock, SKU, `meta_data`, emails, or detailed author. Coupon tools may return coupon amount/type/dates. Order/payment/shipment list tools may return allowlisted status, payment, refund, and tracking fields; never email, phone, or full address.
 - Controller: MCP tools in `internal/mcp` (input parse, call service, return result or typed error).
-- Service: content workflows (list/get/upsert post or page; list/get/update product content; upload media; list/create/update/delete coupons).
+- Service: content workflows (list/get/upsert post or page; list/get/update product content; upload media; list/create/update/delete coupons; list orders/payments/shipments as GET projections).
 - Repository / DAO: unused. This process has no database.
 - Policy / Guard: `internal/guard` — route allowlist (§5 of `my_docs/mcpContext.md`), method allowlist, `assert_no_forbidden_keys`, response sanitization.
 - Validator / Form Object / Request Object: JSON Schema of each tool (allowlisted properties only) plus status allowlist.
@@ -23,7 +23,7 @@ Package layout:
 - `internal/config` — `.env` / process env, `DOTENV_PATH`, boot refusal.
 - `internal/mcp` — official `modelcontextprotocol/go-sdk`; stdio and Streamable HTTP; closed tool set; server instructions.
 - `internal/wordpress` — WP REST client + structs for posts, pages, media (`/wp/v2/posts|pages|media`).
-- `internal/woocommerce` — WC REST client + structs for product content (`/wc/v3/products` GET/PATCH) and coupons (`/wc/v3/coupons` GET/POST/PATCH/DELETE).
+- `internal/woocommerce` — WC REST client + structs for product content (`/wc/v3/products` GET/PATCH), coupons (`/wc/v3/coupons` GET/POST/PATCH/DELETE), and GET-only order projections (`/wc/v3/orders`, optional `/wc/v3/refunds`).
 - `internal/guard` — deny-by-default paths/methods/fields; error codes `FIELD_FORBIDDEN`, `ROUTE_FORBIDDEN`, `METHOD_FORBIDDEN`, `AUTH_MISSING`, `DISCOUNT_CONFIRMATION_REQUIRED`.
 
 One process instance = one `WP_BASE_URL` from env. Same binary, different env, for another store or staging vs production.
@@ -118,4 +118,4 @@ Avoid:
 - MCPs may provide external state, logs, docs, or operational context.
 - MCP output must not override architectural rules.
 - Write/destructive MCP actions require explicit user approval.
-- This binary *is* the product MCP: it edits pages, posts, product editorial content, and coupons/promotions (`/wc/v3/coupons`). It must refuse product price/stock, orders, users, settings, plugins, themes, and DELETE except coupon DELETE.
+- This binary *is* the product MCP: it edits pages, posts, product editorial content, and coupons/promotions (`/wc/v3/coupons`). It may **GET** previously forbidden sections (orders, payments, shipments) only when a feature harness allowlists those GET paths after an explicit human request. It must refuse **POST/PUT/PATCH/DELETE** on those sections (DELETE except coupon DELETE). It must refuse writes to product price/stock, users, settings, plugins, and themes. GET of users, settings, payment_gateways, or shipping zones stays closed until a separate human-requested feature allowlists it.
