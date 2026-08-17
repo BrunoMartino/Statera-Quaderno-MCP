@@ -5,9 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"woocommerce-store-mcp/internal/guard"
 )
@@ -22,19 +27,11 @@ func NewClient(caller *guard.StoreCaller, policy *guard.AccessPolicy) *Client {
 }
 
 func (c *Client) ListPosts(ctx context.Context) ([]PostListItem, error) {
-	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wp/v2/posts", nil, "")
-	if err != nil {
-		return nil, err
-	}
-	var items []PostListItem
-	if err := json.Unmarshal(b, &items); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return listCollection[PostListItem](ctx, c, "/wp-json/wp/v2/posts")
 }
 
 func (c *Client) GetPost(ctx context.Context, id int) (*Post, error) {
-	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wp/v2/posts/"+strconv.Itoa(id), nil, "")
+	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wp/v2/posts/"+strconv.Itoa(id)+"?context=edit", nil, "")
 	if err != nil {
 		return nil, err
 	}
@@ -65,20 +62,44 @@ func (c *Client) UpsertPost(ctx context.Context, id int, raw json.RawMessage) (*
 	return &post, nil
 }
 
+const (
+	listPageSize = 100
+	listMaxPages = 100
+	listStatuses = "draft,publish,pending"
+)
+
+func listCollection[T any](ctx context.Context, c *Client, base string) ([]T, error) {
+	var all []T
+	for page := 1; page <= listMaxPages; page++ {
+		path := base + "?per_page=" + strconv.Itoa(listPageSize) + "&page=" + strconv.Itoa(page) + "&status=" + listStatuses
+		b, err := c.caller.Do(ctx, http.MethodGet, path, nil, "")
+		if err != nil {
+			return nil, err
+		}
+		var items []T
+		if err := json.Unmarshal(b, &items); err != nil {
+			return nil, err
+		}
+		if len(items) == 0 {
+			break
+		}
+		all = append(all, items...)
+		if len(items) < listPageSize {
+			break
+		}
+	}
+	if all == nil {
+		all = []T{}
+	}
+	return all, nil
+}
+
 func (c *Client) ListPages(ctx context.Context) ([]PageListItem, error) {
-	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wp/v2/pages", nil, "")
-	if err != nil {
-		return nil, err
-	}
-	var items []PageListItem
-	if err := json.Unmarshal(b, &items); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return listCollection[PageListItem](ctx, c, "/wp-json/wp/v2/pages")
 }
 
 func (c *Client) GetPage(ctx context.Context, id int) (*Page, error) {
-	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wp/v2/pages/"+strconv.Itoa(id), nil, "")
+	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wp/v2/pages/"+strconv.Itoa(id)+"?context=edit", nil, "")
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +133,7 @@ func (c *Client) UpsertPage(ctx context.Context, id int, raw json.RawMessage) (*
 func (c *Client) UploadMedia(ctx context.Context, filename string, data []byte, altText, mimeType string) (*Media, error) {
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
-	part, err := w.CreateFormFile("file", filename)
+	part, err := createFilePart(w, filepath.Base(filename), mimeType)
 	if err != nil {
 		return nil, err
 	}
@@ -126,9 +147,6 @@ func (c *Client) UploadMedia(ctx context.Context, filename string, data []byte, 
 		return nil, err
 	}
 	ct := w.FormDataContentType()
-	if mimeType != "" {
-		ct = w.FormDataContentType()
-	}
 	b, err := c.caller.Do(ctx, http.MethodPost, "/wp-json/wp/v2/media", buf.Bytes(), ct)
 	if err != nil {
 		return nil, err
@@ -150,6 +168,28 @@ func (c *Client) GetMedia(ctx context.Context, id int) (*Media, error) {
 		return nil, err
 	}
 	return &media, nil
+}
+
+func createFilePart(w *multipart.Writer, filename, mimeType string) (io.Writer, error) {
+	if filename == "" || filename == "." {
+		filename = "upload.bin"
+	}
+	ct := mimeType
+	if ct == "" {
+		ct = mime.TypeByExtension(filepath.Ext(filename))
+	}
+	if ct == "" {
+		ct = "application/octet-stream"
+	}
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, escapeQuotes(filename)))
+	h.Set("Content-Type", ct)
+	return w.CreatePart(h)
+}
+
+func escapeQuotes(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	return strings.ReplaceAll(s, `"`, `\"`)
 }
 
 func (c *Client) prepareWrite(resource guard.Resource, id int, raw json.RawMessage) ([]byte, error) {

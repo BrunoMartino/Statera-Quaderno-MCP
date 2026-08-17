@@ -18,16 +18,32 @@ func NewClient(caller *guard.StoreCaller, policy *guard.AccessPolicy) *Client {
 	return &Client{caller: caller, policy: policy}
 }
 
+const (
+	listPageSize = 100
+	listMaxPages = 100
+)
+
 func (c *Client) ListProducts(ctx context.Context) ([]ProductListItem, error) {
-	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wc/v3/products", nil, "")
-	if err != nil {
-		return nil, err
+	var all []ProductListItem
+	for page := 1; page <= listMaxPages; page++ {
+		path := "/wp-json/wc/v3/products?per_page=" + strconv.Itoa(listPageSize) + "&page=" + strconv.Itoa(page)
+		b, err := c.caller.Do(ctx, http.MethodGet, path, nil, "")
+		if err != nil {
+			return nil, err
+		}
+		var items []ProductListItem
+		if err := json.Unmarshal(b, &items); err != nil {
+			return nil, err
+		}
+		if len(items) == 0 {
+			return all, nil
+		}
+		all = append(all, items...)
+		if len(items) < listPageSize {
+			return all, nil
+		}
 	}
-	var items []ProductListItem
-	if err := json.Unmarshal(b, &items); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return all, nil
 }
 
 func (c *Client) GetProductContent(ctx context.Context, id int) (*ProductContent, error) {
@@ -75,19 +91,33 @@ func (c *Client) UpdateProductContent(ctx context.Context, id int, raw json.RawM
 }
 
 func (c *Client) ListCoupons(ctx context.Context) ([]Coupon, error) {
-	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wc/v3/coupons", nil, "")
-	if err != nil {
-		return nil, err
+	var all []Coupon
+	for page := 1; page <= listMaxPages; page++ {
+		path := "/wp-json/wc/v3/coupons?per_page=" + strconv.Itoa(listPageSize) + "&page=" + strconv.Itoa(page)
+		b, err := c.caller.Do(ctx, http.MethodGet, path, nil, "")
+		if err != nil {
+			return nil, err
+		}
+		var items []Coupon
+		if err := json.Unmarshal(b, &items); err != nil {
+			return nil, err
+		}
+		if len(items) == 0 {
+			break
+		}
+		all = append(all, items...)
+		if len(items) < listPageSize {
+			break
+		}
 	}
-	var items []Coupon
-	if err := json.Unmarshal(b, &items); err != nil {
-		return nil, err
+	if all == nil {
+		all = []Coupon{}
 	}
-	return items, nil
+	return all, nil
 }
 
 func (c *Client) CreateCoupon(ctx context.Context, raw json.RawMessage, confirmed bool) (*Coupon, error) {
-	body, err := c.prepareCoupon(raw, confirmed)
+	body, err := c.prepareCoupon(ctx, 0, raw, confirmed)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +133,7 @@ func (c *Client) CreateCoupon(ctx context.Context, raw json.RawMessage, confirme
 }
 
 func (c *Client) UpdateCoupon(ctx context.Context, id int, raw json.RawMessage, confirmed bool) (*Coupon, error) {
-	body, err := c.prepareCoupon(raw, confirmed)
+	body, err := c.prepareCoupon(ctx, id, raw, confirmed)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +163,19 @@ func (c *Client) DeleteCoupon(ctx context.Context, id int) (*Coupon, error) {
 	return &coupon, nil
 }
 
-func (c *Client) prepareCoupon(raw json.RawMessage, confirmed bool) ([]byte, error) {
+func (c *Client) getCoupon(ctx context.Context, id int) (*Coupon, error) {
+	b, err := c.caller.Do(ctx, http.MethodGet, "/wp-json/wc/v3/coupons/"+strconv.Itoa(id), nil, "")
+	if err != nil {
+		return nil, err
+	}
+	var coupon Coupon
+	if err := json.Unmarshal(b, &coupon); err != nil {
+		return nil, err
+	}
+	return &coupon, nil
+}
+
+func (c *Client) prepareCoupon(ctx context.Context, id int, raw json.RawMessage, confirmed bool) ([]byte, error) {
 	keys, err := guard.JSONObjectKeys(raw)
 	if err != nil {
 		return nil, err
@@ -148,18 +190,32 @@ func (c *Client) prepareCoupon(raw json.RawMessage, confirmed bool) ([]byte, err
 	if err := json.Unmarshal(raw, &aux); err != nil {
 		return nil, err
 	}
-	discountType, amount := "", ""
+	discountType := ""
 	if aux.DiscountType != nil {
 		discountType = *aux.DiscountType
 		if err := c.policy.AssertDiscountType(discountType); err != nil {
 			return nil, err
 		}
 	}
+	amount := ""
 	if aux.Amount != nil {
 		amount = string(*aux.Amount)
 	}
-	if err := c.policy.AssertCouponDiscount(discountType, amount, confirmed); err != nil {
-		return nil, err
+	if amount != "" && discountType == "" {
+		if id > 0 {
+			existing, err := c.getCoupon(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			discountType = existing.DiscountType
+		} else {
+			discountType = "percent"
+		}
+	}
+	if amount != "" {
+		if err := c.policy.AssertCouponDiscount(discountType, amount, confirmed); err != nil {
+			return nil, err
+		}
 	}
 	var write CouponWrite
 	if err := json.Unmarshal(raw, &write); err != nil {

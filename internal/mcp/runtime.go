@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -117,15 +118,34 @@ type uploadMediaInput struct {
 }
 
 type couponInput struct {
-	ID                int    `json:"id,omitempty"`
-	Code              string `json:"code,omitempty"`
-	DiscountType      string `json:"discount_type,omitempty"`
-	Amount            string `json:"amount,omitempty"`
-	DateExpires       string `json:"date_expires,omitempty"`
-	DateExpiresGMT    string `json:"date_expires_gmt,omitempty"`
-	ProductIDs        []int  `json:"product_ids,omitempty"`
-	ProductCategories []int  `json:"product_categories,omitempty"`
-	HumanConfirmed    bool   `json:"human_confirmed,omitempty"`
+	ID                int        `json:"id,omitempty"`
+	Code              string     `json:"code,omitempty"`
+	DiscountType      string     `json:"discount_type,omitempty"`
+	Amount            flexString `json:"amount,omitempty"`
+	DateExpires       string     `json:"date_expires,omitempty"`
+	DateExpiresGMT    string     `json:"date_expires_gmt,omitempty"`
+	ProductIDs        []int      `json:"product_ids,omitempty"`
+	ProductCategories []int      `json:"product_categories,omitempty"`
+	HumanConfirmed    bool       `json:"human_confirmed,omitempty"`
 }
 
 type emptyInput struct{}
+
+// flexString accepts JSON string or number (LLMs often send coupon amount as a number).
+type flexString string
+
+func (s *flexString) UnmarshalJSON(b []byte) error {
+	if len(b) == 0 || string(b) == "null" {
+		return nil
+	}
+	if b[0] == '"' {
+		var v string
+		if err := json.Unmarshal(b, &v); err != nil {
+			return err
+		}
+		*s = flexString(v)
+		return nil
+	}
+	*s = flexString(strings.TrimSpace(string(b)))
+	return nil
+}

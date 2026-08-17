@@ -41,7 +41,7 @@ type Post struct {
 	Excerpt       WPText `json:"excerpt,omitempty"`
 	Slug          string `json:"slug,omitempty"`
 	Status        string `json:"status,omitempty"`
-	FeaturedMedia int    `json:"featured_media,omitempty"`
+	FeaturedMedia int    `json:"featured_media"`
 	Modified      string `json:"modified,omitempty"`
 }
 
@@ -73,7 +73,7 @@ type Page struct {
 	Excerpt       WPText `json:"excerpt,omitempty"`
 	Slug          string `json:"slug,omitempty"`
 	Status        string `json:"status,omitempty"`
-	FeaturedMedia int    `json:"featured_media,omitempty"`
+	FeaturedMedia int    `json:"featured_media"`
 	Modified      string `json:"modified,omitempty"`
 }
 
