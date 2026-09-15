@@ -19,6 +19,13 @@ const (
 	ResourceGet       Resource = "get"
 	ResourceList      Resource = "list"
 	ResourceOrderList Resource = "order_list"
+	ResourceLogs      Resource = "logs"
+)
+
+// Observability limits for the store companion plugin routes (statera-mcp/v1).
+const (
+	LogsLimitMax     = 500
+	LogsLimitDefault = 100
 )
 
 // AccessPolicy is the deny-by-default Policy for routes, methods, and write keys.
@@ -53,6 +60,8 @@ func (p *AccessPolicy) rules() []routeRule {
 		{path: regexp.MustCompile(`^/wp-json/wc/v3/orders$`), methods: methodSet("GET")},
 		{path: regexp.MustCompile(`^/wp-json/wc/v3/orders/[0-9]+$`), methods: methodSet("GET")},
 		{path: regexp.MustCompile(`^/wp-json/wc/v3/refunds$`), methods: methodSet("GET")},
+		{path: regexp.MustCompile(`^/wp-json/statera-mcp/v1/debug$`), methods: methodSet("GET")},
+		{path: regexp.MustCompile(`^/wp-json/statera-mcp/v1/logs$`), methods: methodSet("GET")},
 	}
 }
 
@@ -82,6 +91,8 @@ func (p *AccessPolicy) allowedKeys(resource Resource) map[string]struct{} {
 		return map[string]struct{}{}
 	case ResourceOrderList:
 		return setOf("status")
+	case ResourceLogs:
+		return setOf("source", "level", "since", "limit", "search")
 	default:
 		return map[string]struct{}{}
 	}
@@ -186,6 +197,39 @@ func (p *AccessPolicy) AssertOrderStatus(v string) error {
 	default:
 		return NewError(FieldForbidden)
 	}
+}
+
+// AssertLogSource keeps collect_logs on the four allowlisted store sources.
+func (p *AccessPolicy) AssertLogSource(v string) error {
+	switch v {
+	case "", "all", "debug", "woocommerce", "cron", "callbacks":
+		return nil
+	default:
+		return NewError(FieldForbidden)
+	}
+}
+
+func (p *AccessPolicy) AssertLogLevel(v string) error {
+	switch v {
+	case "", "all", "critical", "error", "warning", "notice", "info", "debug":
+		return nil
+	default:
+		return NewError(FieldForbidden)
+	}
+}
+
+// AssertLogLimit clamps the page size; a non-positive limit takes the default.
+func (p *AccessPolicy) AssertLogLimit(limit int) (int, error) {
+	if limit < 0 {
+		return 0, NewError(FieldForbidden)
+	}
+	if limit == 0 {
+		return LogsLimitDefault, nil
+	}
+	if limit > LogsLimitMax {
+		return 0, NewError(FieldForbidden)
+	}
+	return limit, nil
 }
 
 func (p *AccessPolicy) AssertDiscountType(v string) error {

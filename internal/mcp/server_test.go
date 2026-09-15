@@ -27,11 +27,12 @@ func (testAuth) Apply(req *http.Request) {
 
 func testCfg() *config.Config {
 	return &config.Config{
-		StoreID:         "minha-loja",
-		Environment:     "staging",
-		BaseURL:         "https://loja.example.com",
-		AllowedStatuses: []string{"draft", "publish", "pending"},
-		Auth:            testAuth{},
+		StoreID:             "minha-loja",
+		Environment:         "staging",
+		BaseURL:             "https://loja.example.com",
+		AllowedStatuses:     []string{"draft", "publish", "pending"},
+		ObservabilitySecret: "obs-secret-123",
+		Auth:                testAuth{},
 	}
 }
 

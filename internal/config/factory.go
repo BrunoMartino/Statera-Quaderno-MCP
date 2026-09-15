@@ -75,12 +75,13 @@ func (f EnvConfigFactory) GetConfig() (*Config, error) {
 	}
 
 	return &Config{
-		StoreID:         get("WP_STORE_ID"),
-		Environment:     get("WP_ENVIRONMENT"),
-		BaseURL:         baseURL,
-		UserLogin:       userLogin,
-		AllowedStatuses: statuses,
-		Auth:            auth,
+		StoreID:             get("WP_STORE_ID"),
+		Environment:         get("WP_ENVIRONMENT"),
+		BaseURL:             baseURL,
+		UserLogin:           userLogin,
+		AllowedStatuses:     statuses,
+		ObservabilitySecret: get("WP_MCP_OBSERVABILITY_SECRET"),
+		Auth:                auth,
 	}, nil
 }
 

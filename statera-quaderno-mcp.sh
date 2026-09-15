@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BIN="$ROOT/bin/statera-quaderno-mcp"
-export PATH="/usr/local/go/bin:/usr/bin:${HOME}/sdk/go/bin:${HOME}/go/bin:${HOME}/.local/bin:${PATH}"
+export PATH="/usr/local/go/bin:/usr/bin:${HOME}/sdk/go/bin:${HOME}/go/bin:${HOME}/.local/go/bin:${HOME}/.local/bin:${PATH}"
 export DOTENV_PATH="${DOTENV_PATH:-$ROOT/.env}"
 if [[ ! -x "$BIN" ]]; then
   mkdir -p "$ROOT/bin"

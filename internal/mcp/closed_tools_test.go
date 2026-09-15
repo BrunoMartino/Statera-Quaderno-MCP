@@ -55,6 +55,10 @@ func TestAllClosedToolsHappyPathStructuredObject(t *testing.T) {
 			io.WriteString(w, `[{"id":727,"number":"727","status":"processing","total":"29.35","date_paid":"2017-03-22T16:28:08","refunds":[]}]`)
 		case r.URL.Path == "/wp-json/wp/v2/media":
 			io.WriteString(w, `{"id":44,"mime_type":"image/png"}`)
+		case r.URL.Path == "/wp-json/statera-mcp/v1/debug":
+			io.WriteString(w, `{"wp_debug":true,"wp_debug_log":true,"wp_debug_display":false,"log_writable":true}`)
+		case r.URL.Path == "/wp-json/statera-mcp/v1/logs":
+			io.WriteString(w, `{"source":"all","entries":[],"truncated":false}`)
 		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
@@ -82,6 +86,8 @@ func TestAllClosedToolsHappyPathStructuredObject(t *testing.T) {
 		{"list_orders", map[string]any{"status": "processing"}},
 		{"list_payments", map[string]any{}},
 		{"list_shipments", map[string]any{}},
+		{"get_debug_mode", map[string]any{}},
+		{"collect_logs", map[string]any{"source": "all", "limit": 10}},
 	}
 	if len(calls) != len(closedToolNames) {
 		t.Fatalf("calls=%d tools=%d", len(calls), len(closedToolNames))

@@ -10,6 +10,7 @@ import (
 
 	"woocommerce-store-mcp/internal/config"
 	"woocommerce-store-mcp/internal/guard"
+	"woocommerce-store-mcp/internal/observability"
 	"woocommerce-store-mcp/internal/woocommerce"
 	"woocommerce-store-mcp/internal/wordpress"
 )
@@ -19,6 +20,7 @@ type Runtime struct {
 	policy *guard.AccessPolicy
 	wp     *wordpress.Client
 	wc     *woocommerce.Client
+	obs    *observability.Client
 	server *mcp.Server
 	logger *slog.Logger
 }
@@ -31,11 +33,16 @@ func New(cfg *config.Config, caller *guard.StoreCaller, logger *slog.Logger) *Ru
 	if logger == nil {
 		logger = slog.Default()
 	}
+	observabilitySecret := ""
+	if cfg != nil {
+		observabilitySecret = cfg.ObservabilitySecret
+	}
 	r := &Runtime{
 		cfg:    cfg,
 		policy: policy,
 		wp:     wordpress.NewClient(caller, policy),
 		wc:     woocommerce.NewClient(caller, policy),
+		obs:    observability.NewClient(caller, policy, observabilitySecret),
 		logger: logger,
 	}
 	r.server = mcp.NewServer(&mcp.Implementation{
@@ -133,6 +140,14 @@ type emptyInput struct{}
 
 type listOrdersInput struct {
 	Status string `json:"status,omitempty"`
+}
+
+type collectLogsInput struct {
+	Source string `json:"source,omitempty"`
+	Level  string `json:"level,omitempty"`
+	Since  string `json:"since,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
+	Search string `json:"search,omitempty"`
 }
 
 // flexString accepts JSON string or number (LLMs often send coupon amount as a number).

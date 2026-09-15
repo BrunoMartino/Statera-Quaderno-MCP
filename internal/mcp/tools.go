@@ -8,6 +8,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"woocommerce-store-mcp/internal/guard"
+	"woocommerce-store-mcp/internal/observability"
 )
 
 func inputSchema[T any]() *jsonschema.Schema {
@@ -36,6 +37,8 @@ func (r *Runtime) registerTools() {
 	mcp.AddTool(r.server, &mcp.Tool{Name: "delete_coupon", Description: "DELETE /wc/v3/coupons/{id}. Não apaga posts, páginas, produtos nem media.", InputSchema: inputSchema[idInput]()}, r.deleteCoupon)
 	mcp.AddTool(r.server, &mcp.Tool{Name: "list_orders", Description: "Lista pedidos (id, number, status, total, date_paid, refunds). Filtro status. Não devolve email, telefone nem morada. Só GET.", InputSchema: inputSchema[listOrdersInput]()}, r.listOrders)
 	mcp.AddTool(r.server, &mcp.Tool{Name: "list_payments", Description: "Lista pagamentos projectados do pedido (método, transaction_id, date_paid, confirmed). Só GET. Não devolve PII de contacto.", InputSchema: inputSchema[emptyInput]()}, r.listPayments)
+	mcp.AddTool(r.server, &mcp.Tool{Name: "get_debug_mode", Description: "Lê o estado de debug da loja: WP_DEBUG, WP_DEBUG_LOG, WP_DEBUG_DISPLAY, caminho e tamanho do ficheiro de log. Só leitura: ligar/desligar debug é no host (env WORDPRESS_DEBUG do container), não por aqui.", InputSchema: inputSchema[emptyInput]()}, r.getDebugMode)
+	mcp.AddTool(r.server, &mcp.Tool{Name: "collect_logs", Description: "Recolhe logs da loja: source debug|woocommerce|cron|callbacks|all, level, since (RFC3339 ou 30m/2h/7d), limit (máx 500), search. Linhas sanitizadas (sem email, telefone, IP, tokens). Só GET.", InputSchema: inputSchema[collectLogsInput]()}, r.collectLogs)
 	mcp.AddTool(r.server, &mcp.Tool{Name: "list_shipments", Description: "Lista envios projectados do pedido (rastreio allowlisted, aguardando vs enviado). Só GET. Não inventa código de rastreio.", InputSchema: inputSchema[emptyInput]()}, r.listShipments)
 }
 
@@ -180,6 +183,28 @@ func (r *Runtime) listShipments(ctx context.Context, req *mcp.CallToolRequest, _
 	}
 	r.logTool("list_shipments", 0)
 	return packList(r.wc.ListShipments(ctx))
+}
+
+func (r *Runtime) getDebugMode(ctx context.Context, req *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, any, error) {
+	if err := r.assertKeys(guard.ResourceList, req.Params.Arguments); err != nil {
+		return nil, nil, err
+	}
+	r.logTool("get_debug_mode", 0)
+	return pack(r.obs.GetDebugMode(ctx))
+}
+
+func (r *Runtime) collectLogs(ctx context.Context, req *mcp.CallToolRequest, in collectLogsInput) (*mcp.CallToolResult, any, error) {
+	if err := r.assertKeys(guard.ResourceLogs, req.Params.Arguments); err != nil {
+		return nil, nil, err
+	}
+	r.logTool("collect_logs", in.Limit)
+	return pack(r.obs.CollectLogs(ctx, observability.LogQuery{
+		Source: in.Source,
+		Level:  in.Level,
+		Since:  in.Since,
+		Limit:  in.Limit,
+		Search: in.Search,
+	}))
 }
 
 func pack[T any](v T, err error) (*mcp.CallToolResult, any, error) {

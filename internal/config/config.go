@@ -9,7 +9,10 @@ type Config struct {
 	BaseURL         string
 	UserLogin       string
 	AllowedStatuses []string
-	Auth            Auth
+	// ObservabilitySecret authenticates the statera-mcp/v1 debug and logs routes.
+	// Empty means the observability tools are unavailable (OBSERVABILITY_SECRET_MISSING).
+	ObservabilitySecret string
+	Auth                Auth
 }
 
 // Auth is the HTTP identity created by the factory (Application Password or WC consumer).

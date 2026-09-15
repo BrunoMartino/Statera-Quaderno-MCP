@@ -8,6 +8,7 @@ const (
 	RouteForbidden               = "ROUTE_FORBIDDEN"
 	MethodForbidden              = "METHOD_FORBIDDEN"
 	DiscountConfirmationRequired = "DISCOUNT_CONFIRMATION_REQUIRED"
+	ObservabilitySecretMissing   = "OBSERVABILITY_SECRET_MISSING"
 )
 
 // Error is a typed tool/boot failure. Error() is the stable code (no secrets).

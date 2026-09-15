@@ -55,6 +55,12 @@ func NewStoreCaller(baseURL string, auth interface{ Apply(*http.Request) }, poli
 }
 
 func (s *StoreCaller) Do(ctx context.Context, method, path string, body []byte, contentType string) ([]byte, error) {
+	return s.DoWithHeaders(ctx, method, path, body, contentType, nil)
+}
+
+// DoWithHeaders is Do plus extra request headers (the observability shared secret).
+// Header values are never logged.
+func (s *StoreCaller) DoWithHeaders(ctx context.Context, method, path string, body []byte, contentType string, headers map[string]string) ([]byte, error) {
 	if s == nil || s.Auth == nil {
 		return nil, NewError(AuthMissing)
 	}
@@ -69,7 +75,7 @@ func (s *StoreCaller) Do(ctx context.Context, method, path string, body []byte, 
 	}
 	var lastErr error
 	for i := 0; i < attempts; i++ {
-		b, status, err := s.doOnce(ctx, method, path, body, contentType)
+		b, status, err := s.doOnce(ctx, method, path, body, contentType, headers)
 		if err != nil {
 			lastErr = err
 			if method != http.MethodGet {
@@ -90,7 +96,7 @@ func (s *StoreCaller) Do(ctx context.Context, method, path string, body []byte, 
 	return nil, lastErr
 }
 
-func (s *StoreCaller) doOnce(ctx context.Context, method, path string, body []byte, contentType string) ([]byte, int, error) {
+func (s *StoreCaller) doOnce(ctx context.Context, method, path string, body []byte, contentType string, headers map[string]string) ([]byte, int, error) {
 	full := s.BaseURL + path
 	var rdr io.Reader
 	if body != nil {
@@ -102,6 +108,9 @@ func (s *StoreCaller) doOnce(ctx context.Context, method, path string, body []by
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 	s.Auth.Apply(req)
 	if u := req.URL.Query(); u.Get("consumer_key") != "" || u.Get("consumer_secret") != "" {
