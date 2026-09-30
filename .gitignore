@@ -12,7 +12,7 @@ tmp/
 *.out
 coverage.out
 coverage.html
-woocommerce-store-mcp
+/woocommerce-store-mcp
 __debug_bin*
 .idea/
 .vscode/
